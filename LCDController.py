@@ -61,6 +61,7 @@ class LCD:
 
 class LCDLine(threading.Thread):
 	import time
+	import math
 
 	def __init__(self, lcd, line_number, columns, refresh_interval=0.5, step_interval=2, start_duration=5,
 	             end_duration=5):
@@ -91,13 +92,19 @@ class LCDLine(threading.Thread):
 	def _reset_line_(self):
 		self.lcd.set_position(self.line_number, 0)
 
-	def format_text_left(self, text):
+	def format_text(self, text, align='l'):
 		if len(text) < self.columns:
-			return text + (self.columns - len(text)) * " "
+			if align == 'r':
+				return (self.columns - len(text)) * " " + text
+			elif align == 'c':
+				return self.math.floor((self.columns - len(text)) / 2) * " " + \
+				       text + self.math.ceil((self.columns - len(text)) / 2) * " "
+			else:
+				return text + (self.columns - len(text)) * " "
 		else:
 			return text
 
-	def set_text(self, text):
+	def set_text(self, text, align='l'):
 		self.text_pos = 0
 		self.last_marquee_step = self.time.time()
 
@@ -107,7 +114,7 @@ class LCDLine(threading.Thread):
 		else:
 			self.do_marquee = False
 			# add the needed amount of whitespace
-			self.text = self.format_text_left(text)
+			self.text = self.format_text(text, align)
 		self._write_string_()
 
 	def set_text_right(self, text):
@@ -188,7 +195,7 @@ class MPDLine(LCDLine):
 	from mpd import MPDClient
 
 	def __init__(self, lcd, line_number, columns, key, refresh_interval=0.5, step_interval=1, start_duration=5,
-	             end_duration=5, query_info_interval=5):
+	             end_duration=5, query_info_interval=5, align='l'):
 		super().__init__(lcd, line_number, columns, refresh_interval, step_interval, start_duration, end_duration)
 
 		self.client = self.MPDClient()
@@ -197,17 +204,18 @@ class MPDLine(LCDLine):
 		self.client.connect("localhost", 6600)
 		self.query_info_interval = query_info_interval
 		self.key = key
+		self.align = align
 
 	def run_every(self):
 		if self.last_marquee_step is None:
-			self.update_text()
+			self.update_text(self.align)
 		elif self.time.time() - self.last_marquee_step >= self.query_info_interval:
-			self.update_text()
+			self.update_text(self.align)
 
 		super().run_every()
 
-	def update_text(self):
-		new_text = self.format_text_left(self.client.currentsong()[self.key])
+	def update_text(self, align):
+		new_text = self.format_text(self.client.currentsong()[self.key], align)
 
 		if self.text != new_text:
-			self.set_text(new_text)
+			self.set_text(new_text, align)
