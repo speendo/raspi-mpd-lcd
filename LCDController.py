@@ -91,18 +91,23 @@ class LCDLine(threading.Thread):
 	def _reset_line_(self):
 		self.lcd.set_position(self.line_number, 0)
 
-	def set_text(self, text):
-		self.text = text
+	def format_text_left(self, text):
+		if len(text) < self.columns:
+			return text + (self.columns - len(text)) * " "
+		else:
+			return text
 
+	def set_text(self, text):
 		self.text_pos = 0
 		self.last_marquee_step = self.time.time()
 
-		if len(self.text) > self.columns:
+		if len(text) > self.columns:
 			self.do_marquee = True
+			self.text = text
 		else:
 			self.do_marquee = False
 			# add the needed amount of whitespace
-			self.text += (self.columns - len(self.text)) * " "
+			self.text = self.format_text_left(text)
 		self._write_string_()
 
 	def set_text_right(self, text):
@@ -183,7 +188,7 @@ class MPDLine(LCDLine):
 	from mpd import MPDClient
 
 	def __init__(self, lcd, line_number, columns, key, refresh_interval=0.5, step_interval=1, start_duration=5,
-	             end_duration=5, query_info_interval=30):
+	             end_duration=5, query_info_interval=5):
 		super().__init__(lcd, line_number, columns, refresh_interval, step_interval, start_duration, end_duration)
 
 		self.client = self.MPDClient()
@@ -202,7 +207,7 @@ class MPDLine(LCDLine):
 		super().run_every()
 
 	def update_text(self):
-		new_text = self.client.currentsong()[self.key]
+		new_text = self.format_text_left(self.client.currentsong()[self.key])
 
 		if self.text != new_text:
 			self.set_text(new_text)
