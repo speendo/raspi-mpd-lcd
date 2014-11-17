@@ -18,6 +18,9 @@ class LCD:
 		# array containing the lines
 		self.lineContainer = dict()
 
+		# position
+		self.position = (0,0)
+
 		# remove cursor
 		self.lcd.command(self.lcd.CMD_Display_Control | self.lcd.OPT_Enable_Display)
 		# turn backlingt on
@@ -47,32 +50,43 @@ class LCD:
 		self.lock.acquire()
 		try:
 			self.lcd.setPosition(line, column)
+
+			# update current position
+			self.position = (line, column + 1)
+
 		finally:
 			self.lock.release()
 
 	def write_char_at(self, line, column, char):
-		self.lock.acquire()
-		try:
-			self.set_position(line, column)
-			self.lcd.writeChar(char)
-		finally:
-			self.lock.release()
+			self.lock.acquire()
+			try:
+				if self.position[0] != line | self.position[1] != column:
+					self.set_position(line, column)
+				self.lcd.writeChar(char)
+				self.position = (line, column + 1)
+			finally:
+				self.lock.release()
 
 
 class LCDLine(threading.Thread):
 	import time
 	import math
 
-	def __init__(self, lcd, line_number, columns, refresh_interval=0.5, step_interval=2, start_duration=5,
-	             end_duration=5):
+	def __init__(self, lcd, line_number, **kwargs):
 		super().__init__()
 		self.lcd = lcd
 		self.line_number = line_number
-		self.columns = columns
-		self.refresh_interval = refresh_interval
-		self.step_interval = step_interval
-		self.start_duration = start_duration
-		self.end_duration = end_duration
+
+		# kwargs
+		self.refresh_interval = 0.5
+		self.step_interval = 0.5
+		self.start_duration = 3.0
+		self.end_duration = 5.0
+		self.columns = self.lcd.columns
+
+		for key, value in kwargs.items():
+			setattr(self, key, value)
+
 		# current text
 		self.text = ""
 		# current position
@@ -80,7 +94,7 @@ class LCDLine(threading.Thread):
 		# marquee necessary?
 		self.do_marquee = False
 		# current text
-		self._current_text_ = columns * " "
+		self._current_text_ = self.columns * " "
 		# last marquee step
 		self.last_marquee_step = None
 
@@ -162,6 +176,8 @@ class LCDLine(threading.Thread):
 	def _write_string_(self):
 		text_to_set = self.text[self.text_pos:(self.columns + self.text_pos)]
 
+		print(text_to_set)
+
 		for i in range(0, self.columns):
 			if text_to_set[i] != self._current_text_[i]:
 				self.lcd.write_char_at(self.line_number, i, text_to_set[i])
@@ -171,9 +187,8 @@ class LCDLine(threading.Thread):
 
 class TimeLine(LCDLine):
 
-	def __init__(self, lcd, line_number, columns, refresh_interval=0.2, step_interval=1, start_duration=3,
-	             end_duration=3):
-		super().__init__(lcd, line_number, columns, refresh_interval, step_interval, start_duration, end_duration)
+	def __init__(self, lcd, line_number, **kwargs):
+		super().__init__(lcd, line_number, **kwargs)
 
 		self.start_time = self.time.time()
 
@@ -191,31 +206,79 @@ class TimeLine(LCDLine):
 		self.set_text_right(self.time.strftime("%H:%M:%S", self.time.gmtime(self.time.time() - self.start_time)))
 
 
-class MPDLine(LCDLine):
+class TextLine(LCDLine):
+	def __init__(self, lcd, line_number, **kwargs):
+		self.align = 'l'
+		super().__init__(lcd, line_number, **kwargs)
+
+	def run_every(self):
+		if self.last_marquee_step is None:
+			self.update_text()
+		elif self.time.time() - self.last_marquee_step >= self.query_info_interval:
+			self.update_text()
+
+		super().run_every()
+
+	def update_text(self):
+		raise NotImplementedError("This is an abstract class (update_text() must be implemented in subclass)")
+
+class MPDLine(TextLine):
 	from mpd import MPDClient
 
-	def __init__(self, lcd, line_number, columns, key, refresh_interval=0.5, step_interval=1, start_duration=5,
-	             end_duration=5, query_info_interval=5, align='l'):
-		super().__init__(lcd, line_number, columns, refresh_interval, step_interval, start_duration, end_duration)
+	def __init__(self, lcd, line_number, key, **kwargs):
+		self.query_info_interval = 5.0
+		super().__init__(lcd, line_number, **kwargs)
 
 		self.client = self.MPDClient()
 		self.client.timeout = 10
 		self.client.idletimeout = None
 		self.client.connect("localhost", 6600)
-		self.query_info_interval = query_info_interval
 		self.key = key
-		self.align = align
 
-	def run_every(self):
-		if self.last_marquee_step is None:
-			self.update_text(self.align)
-		elif self.time.time() - self.last_marquee_step >= self.query_info_interval:
-			self.update_text(self.align)
-
-		super().run_every()
-
-	def update_text(self, align):
-		new_text = self.format_text(self.client.currentsong()[self.key], align)
+	def update_text(self):
+		new_text = self.format_text(self.client.currentsong()[self.key], self.align)
 
 		if self.text != new_text:
-			self.set_text(new_text, align)
+			self.set_text(new_text, self.align)
+
+
+class FetchLine(TextLine):
+	from urllib import request
+
+	def __init__(self, lcd, line_number, url, **kwargs):
+		self.query_info_interval = 60.0
+		self.decode = 'latin1'
+		super().__init__(lcd, line_number, **kwargs)
+
+		self.url = url
+		self.req = self.request.Request(url)
+
+
+		self.fetcher = self.Fetcher(self.req, self.decode)
+		self.fetcher.start()
+
+	class Fetcher(threading.Thread):
+		from urllib import request, error
+
+		def __init__(self, req, decode):
+			super().__init__()
+
+			self.text = "NO DATA"
+
+			self.req = req
+			self.decode = decode
+
+		def run(self):
+			try:
+				response = self.request.urlopen(self.req)
+				self.text = response.read().decode(self.decode)
+			except (self.error.HTTPError, self.error.URLError) as e:
+				print(e)
+
+	def update_text(self):
+		new_text = self.format_text(self.fetcher.text, self.align)
+
+		if self.text != new_text:
+			self.set_text(new_text, self.align)
+
+		self.fetcher.run()
