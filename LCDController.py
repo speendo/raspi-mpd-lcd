@@ -205,12 +205,14 @@ class TimeLine(LCDLine):
 class TextLine(LCDLine):
 	def __init__(self, lcd, line_number, **kwargs):
 		self.align = 'l'
+		self.query_info_interval = 5.0
+		self.last_update = None
 		super().__init__(lcd, line_number, **kwargs)
 
 	def run_every(self):
-		if self.last_marquee_step is None:
+		if self.last_update is None:
 			self.update_text()
-		elif self.time.time() - self.last_marquee_step >= self.query_info_interval:
+		elif self.time.time() - self.last_update >= self.query_info_interval:
 			self.update_text()
 
 		super().run_every()
@@ -222,7 +224,6 @@ class MPDLine(TextLine):
 	from mpd import MPDClient
 
 	def __init__(self, lcd, line_number, key, **kwargs):
-		self.query_info_interval = 5.0
 		super().__init__(lcd, line_number, **kwargs)
 
 		self.client = self.MPDClient()
@@ -237,14 +238,16 @@ class MPDLine(TextLine):
 		if self.text != new_text:
 			self.set_text(new_text, self.align)
 
+		self.last_update = self.time.time()
+
 
 class FetchLine(TextLine):
 	from urllib import request
 
 	def __init__(self, lcd, line_number, url, **kwargs):
+		super().__init__(lcd, line_number, **kwargs)
 		self.query_info_interval = 60.0
 		self.decode = 'latin1'
-		super().__init__(lcd, line_number, **kwargs)
 
 		self.url = url
 		self.req = self.request.Request(url)
@@ -278,3 +281,4 @@ class FetchLine(TextLine):
 			self.set_text(new_text, self.align)
 
 		self.fetcher.run()
+		self.last_update = self.time.time()
