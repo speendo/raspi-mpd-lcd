@@ -1,13 +1,13 @@
 __author__ = 'marcel'
 
-from i2clibraries import i2c_lcd
+from i2c_lcd_patched import i2c_lcd
 import threading
 
 
 class LCD:
 	def __init__(self, lines, columns):
 		# init lcd
-		self.lcd = i2c_lcd.i2c_lcd(0x27, 1, 2, 1, 0, 4, 5, 6, 7, 3)
+		self.lcd = i2c_lcd(0x27, 1, 2, 1, 0, 4, 5, 6, 7, 3)
 
 		# Lock
 		self.lock = threading.RLock()
@@ -19,7 +19,7 @@ class LCD:
 		self.lineContainer = dict()
 
 		# position
-		self.position = (0,0)
+		self.cursor = (0, 0)
 
 		# remove cursor
 		self.lcd.command(self.lcd.CMD_Display_Control | self.lcd.OPT_Enable_Display)
@@ -46,13 +46,15 @@ class LCD:
 		else:
 			self.lineContainer[name] = lcd_line
 
+		return lcd_line
+
 	def set_position(self, line, column):
 		self.lock.acquire()
 		try:
 			self.lcd.setPosition(line, column)
 
 			# update current position
-			self.position = (line, column + 1)
+			self.cursor = (line, column)
 
 		finally:
 			self.lock.release()
@@ -60,10 +62,10 @@ class LCD:
 	def write_char_at(self, line, column, char):
 			self.lock.acquire()
 			try:
-				if self.position[0] != line | self.position[1] != column:
+				if (self.cursor[0] != line) | (self.cursor[1] != column):
 					self.set_position(line, column)
 				self.lcd.writeChar(char)
-				self.position = (line, column + 1)
+				self.cursor = (line, column + 1)
 			finally:
 				self.lock.release()
 
@@ -94,17 +96,14 @@ class LCDLine(threading.Thread):
 		# marquee necessary?
 		self.do_marquee = False
 		# current text
-		self._current_text_ = self.columns * " "
+		self._current_text = self.columns * " "
 		# last marquee step
 		self.last_marquee_step = None
 
 	def run_every(self):
-		self._write_string_()
-		self._time_for_marquee_()
+		self._write_string()
+		self._time_for_marquee()
 		threading.Timer(self.refresh_interval, self.run_every).start()
-
-	def _reset_line_(self):
-		self.lcd.set_position(self.line_number, 0)
 
 	def format_text(self, text, align='l'):
 		if len(text) < self.columns:
@@ -129,7 +128,7 @@ class LCDLine(threading.Thread):
 			self.do_marquee = False
 			# add the needed amount of whitespace
 			self.text = self.format_text(text, align)
-		self._write_string_()
+		self._write_string()
 
 	def set_text_right(self, text):
 		prev_text = self.text.rstrip(' ')
@@ -149,40 +148,37 @@ class LCDLine(threading.Thread):
 	def clear_text(self):
 		self.text = ""
 
-	def _set_position_(self, column):
+	def _set_position(self, column):
 		if (column >= 0) & (column < self.columns):
 			self.lcd.set_position(self.line_number, column)
 		else:
 			raise ValueError("Column " + column + " does not exist.")
 
-	def _time_for_marquee_(self):
+	def _time_for_marquee(self):
 		if (not self.last_marquee_step is None) & self.do_marquee:
 			if (self.text_pos == 0) & (self.time.time() - self.last_marquee_step >= self.start_duration):
-				self._marquee_step_()
+				self._marquee_step()
 			elif (self.text_pos == (len(self.text) - self.columns)) & \
 					(self.time.time() - self.last_marquee_step >= self.end_duration):
-				self._marquee_step_()
+				self._marquee_step()
 			elif (self.text_pos > 0) & (self.text_pos < len(self.text) - self.columns) & \
 					(self.time.time() - self.last_marquee_step >= self.step_interval):
-				self._marquee_step_()
+				self._marquee_step()
 
-	def _marquee_step_(self):
+	def _marquee_step(self):
 		if self.do_marquee:
 			self.text_pos += 1
 			if self.text_pos >= len(self.text) - self.columns + 1:
 				self.text_pos = 0
 			self.last_marquee_step = self.time.time()
 
-	def _write_string_(self):
+	def _write_string(self):
 		text_to_set = self.text[self.text_pos:(self.columns + self.text_pos)]
-
-		print(text_to_set)
-
 		for i in range(0, self.columns):
-			if text_to_set[i] != self._current_text_[i]:
+			if text_to_set[i] != self._current_text[i]:
 				self.lcd.write_char_at(self.line_number, i, text_to_set[i])
 
-		self._current_text_ = text_to_set
+		self._current_text = text_to_set
 
 
 class TimeLine(LCDLine):
