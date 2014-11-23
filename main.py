@@ -1,6 +1,7 @@
 __author__ = 'marcel'
 
-from LCDController import *
+from lib.LCDController import *
+from lib.LineController import *
 
 lcd = LCD(4, 20)
 
@@ -13,3 +14,12 @@ lcd.lineContainer["time"].run_every()
 lcd.lineContainer["station"].run_every()
 lcd.lineContainer["song"].run_every()
 lcd.lineContainer["proverb"].run_every()
+
+import time
+time.sleep(3)
+print("Suspend")
+lcd.standby()
+time.sleep(2)
+print("Resume")
+lcd.resume()
+

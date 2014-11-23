@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="FlushFM-LCD" />
+  <component name="PublishConfigData" serverName="FlushFM-LCD" uploadOnCheckin="1611d973-2929-4cf2-aa3d-149a182fe543">
+    <option name="myUploadOnCheckinName" value="FlushFM-LCD" />
+  </component>
 </project>
 
