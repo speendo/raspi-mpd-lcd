@@ -55,6 +55,8 @@ class LCD:
 		return lcd_line
 
 	def remove_line(self, line):
+		self.lineContainer[line].set_text(self.columns * " ")
+
 		del self.lineContainer[line]
 
 	def set_position(self, line, column):
