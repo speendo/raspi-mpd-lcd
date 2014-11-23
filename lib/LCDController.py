@@ -55,7 +55,7 @@ class LCD:
 		return lcd_line
 
 	def remove_line(self, line):
-		self.lineContainer
+		del self.lineContainer[line]
 
 	def set_position(self, line, column):
 		self.lock.acquire()
