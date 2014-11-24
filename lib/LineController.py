@@ -193,7 +193,10 @@ class MPDLine(TextLine):
 		self.key = key
 
 	def update_text(self):
-		new_text = self.format_text(self.client.currentsong()[self.key], self.align)
+		if self.key in self.client.currentsong():
+			new_text = self.format_text(self.client.currentsong()[self.key], self.align)
+		else:
+			new_text = "NO TEXT"
 
 		if self.text != new_text:
 			self.set_text(new_text, self.align)
