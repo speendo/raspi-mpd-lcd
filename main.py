@@ -2,8 +2,8 @@
 
 __author__ = 'marcel'
 
-from lib.LCDController import *
-from lib.LineController import *
+from LCDController import *
+from LineController import *
 
 lcd = LCD(4, 20)
 
