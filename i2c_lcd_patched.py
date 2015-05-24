@@ -1,6 +1,6 @@
 __author__ = 'marcel'
 
-from lib.FlushFMLCD.lib.i2clibraries import i2c_lcd as i2c_lcd_prev
+from lib.i2clibraries import i2c_lcd as i2c_lcd_prev
 
 
 class i2c_lcd(i2c_lcd_prev.i2c_lcd):

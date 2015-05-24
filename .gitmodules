@@ -1,6 +1,0 @@
-[submodule "i2clibraries"]
-	path = i2clibraries
-	url = https://bitbucket.org/thinkbowl/i2clibraries.git
-[submodule "lib/i2clibraries"]
-	path = lib/i2clibraries
-	url = https://bitbucket.org/thinkbowl/i2clibraries.git
