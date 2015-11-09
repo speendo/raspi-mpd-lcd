@@ -1,13 +1,14 @@
+# -*- coding: utf-8 -*-
 __author__ = 'marcel'
 
-from lcd_driver import lcd
+import LCDDriver
 import threading
 
 
 class LCD:
-	def __init__(self, lines, columns):
+	def __init__(self, lines, columns, locale = None):
 		# init lcd
-		self.lcd = lcd()
+		self.lcd = LCDDriver.LCD(locale = locale)
 
 		# Lock
 		self.lock = threading.RLock()

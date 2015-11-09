@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 __author__ = 'marcel'
 
 from LCDController import *
 from LineController import *
 
-lcd = LCD(4, 20)
+from LocaleDE import LocaleDE
+
+locale_de = LocaleDE()
+
+lcd = LCD(4, 20, locale = locale_de)
 
 lcd.set_line("time", TimeLine(lcd, 1))
 lcd.set_line("station", MPDLine(lcd, 2, "name", align='c'))
