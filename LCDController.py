@@ -1,13 +1,13 @@
 __author__ = 'marcel'
 
-from i2c_lcd_patched import i2c_lcd
+from lcd_driver import lcd
 import threading
 
 
 class LCD:
 	def __init__(self, lines, columns):
 		# init lcd
-		self.lcd = i2c_lcd(0x27, 1, 2, 1, 0, 4, 5, 6, 7, 3)
+		self.lcd = lcd()
 
 		# Lock
 		self.lock = threading.RLock()
@@ -16,55 +16,44 @@ class LCD:
 		self.lines = lines
 		self.columns = columns
 		# array containing the lines
-		self.lineContainer = dict()
+		self.line_container = dict()
 
 		# position
 		self.cursor = (0, 0)
 
-		# remove cursor
-		self.lcd.command(self.lcd.CMD_Display_Control | self.lcd.OPT_Enable_Display)
-		# turn backlingt on
-		self.backlight(True)
 		# state
 		self.suspend = False
 
 	def backlight(self, stat):
-		if stat:
-			self.lock.acquire()
-			try:
-				self.lcd.backLightOn()
-			finally:
-				self.lock.release()
-		else:
-			self.lock.acquire()
-			try:
-				self.lcd.backLightOff()
-			finally:
-				self.lock.release()
+		self.lock.acquire()
+		try:
+			self.lcd.backlight(stat)
+		finally:
+			self.lock.release()
 
 	def set_line(self, name, lcd_line):
 		if (lcd_line.line_number <= 0) | (lcd_line.line_number > self.lines):
 			raise ValueError("Not a valid line number!")
 		else:
 			# check if line is reserved
-			for cur_line in self.lineContainer.values():
+			for cur_line in self.line_container.values():
 				if cur_line.line_number == lcd_line.line_number:
 					raise ValueError("Line already in use!")
 
 			# else go ahead
-			self.lineContainer[name] = lcd_line
+			self.line_container[name] = lcd_line
 
 		return lcd_line
 
 	def remove_line(self, line):
-		self.lineContainer[line].set_text(self.columns * " ")
+		self.line_container[line].set_text(self.columns * " ")
 
-		del self.lineContainer[line]
+		del self.line_container[line]
 
 	def set_position(self, line, column):
 		self.lock.acquire()
 		try:
-			self.lcd.setPosition(line, column)
+			self.lcd.set_position(line, column)
 
 			# update current position
 			self.cursor = (line, column)
@@ -77,7 +66,7 @@ class LCD:
 			try:
 				if (self.cursor[0] != line) | (self.cursor[1] != column):
 					self.set_position(line, column)
-				self.lcd.writeChar(char)
+				self.lcd.write(char)
 				self.cursor = (line, column + 1)
 			finally:
 				self.lock.release()
@@ -86,17 +75,17 @@ class LCD:
 		if not self.suspend:
 			self.suspend = True
 
-			for line in self.lineContainer.values():
+			for line in self.line_container.values():
 				line.lock.acquire()
 
-			self.lcd.command(self.lcd.CMD_Clear_Display)
+			self.lcd.clear_display()
 			self.backlight(False)
 
 	def resume(self):
 		if self.suspend:
 			self.suspend = False
 
-			for line in self.lineContainer.values():
+			for line in self.line_container.values():
 				line.lock.release()
 				line.resume()
 
