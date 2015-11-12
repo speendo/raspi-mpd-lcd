@@ -19,9 +19,8 @@ class LCDLine(threading.Thread):
 		self.start_duration = 3.0
 		self.end_duration = 5.0
 		self.columns = self.lcd.columns
-
-		for key, value in kwargs.items():
-			setattr(self, key, value)
+		
+		self.set_kwargs(**kwargs)
 
 		# current text
 		self.text = ""
@@ -35,6 +34,10 @@ class LCDLine(threading.Thread):
 		self._current_text = self.columns * " "
 		# Status
 		self.lock = threading.RLock()
+	
+	def set_kwargs(self, **kwargs):
+		for key, value in kwargs.items():
+			setattr(self, key, value)
 
 	def run_every(self):
 		self.lock.acquire()
@@ -129,9 +132,11 @@ class LCDLine(threading.Thread):
 class TimeLine(LCDLine):
 
 	def __init__(self, lcd, line_number, **kwargs):
-		super().__init__(lcd, line_number, **kwargs)
+		super().__init__(lcd, line_number)
 
 		self.start_time = self.time.time()
+		
+		self.set_kwargs(**kwargs)
 
 		self.update_time()
 
@@ -157,10 +162,13 @@ class TimeLine(LCDLine):
 
 class TextLine(LCDLine):
 	def __init__(self, lcd, line_number, **kwargs):
+		super().__init__(lcd, line_number)
+
 		self.align = 'l'
 		self.query_info_interval = 5.0
 		self.last_update = None
-		super().__init__(lcd, line_number, **kwargs)
+		
+		self.set_kwargs(**kwargs)
 
 	def run_every(self):
 		self.lock.acquire()
@@ -186,12 +194,14 @@ class MPDLine(TextLine):
 	from mpd import MPDClient
 
 	def __init__(self, lcd, line_number, key, **kwargs):
-		super().__init__(lcd, line_number, **kwargs)
+		super().__init__(lcd, line_number)
 
 		self.client = self.MPDClient()
 		self.client.timeout = 10
 		self.client.connect("localhost", 6600)
 		self.key = key
+
+		self.set_kwargs(**kwargs)
 
 	def update_text(self):
 		if self.key in self.client.currentsong():
@@ -210,13 +220,15 @@ class FetchLine(TextLine):
 	from urllib import request
 
 	def __init__(self, lcd, line_number, url, **kwargs):
-		super().__init__(lcd, line_number, **kwargs)
+		super().__init__(lcd, line_number)
+		
 		self.query_info_interval = 60.0
-		self.decode = 'latin1'
+		self.decode = 'utf-8'
 
 		self.url = url
 		self.req = self.request.Request(url)
-
+		
+		self.set_kwargs(**kwargs)
 
 		self.fetcher = self.Fetcher(self.req, self.decode)
 		self.fetcher.start()
@@ -236,6 +248,7 @@ class FetchLine(TextLine):
 			try:
 				response = self.request.urlopen(self.req)
 				self.text = response.read().decode(self.decode)
+				
 			except (self.error.HTTPError, self.error.URLError) as e:
 				print(e)
 

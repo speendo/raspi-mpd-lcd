@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
+### BIT PATTERNS ###
+
 import i2c_lib
 from time import sleep
-
-import LocaleClass
-
-### BIT PATTERNS ###
 
 # Commands
 LCD_CLEARDISPLAY =        0b00000001
@@ -58,6 +56,39 @@ EN_OFF = 0b00000000
 BL_ON  = 0b00001000
 BL_OFF = 0b00000000
 
+cap_ae =  [
+	0b00001010,
+	0b00000000,
+	0b00001110,
+	0b00010001,
+	0b00011111,
+	0b00010001,
+	0b00010001,
+	0b00000000
+]
+
+cap_oe = [
+	0b00001010,
+	0b00000000,
+	0b00001110,
+	0b00010001,
+	0b00010001,
+	0b00010001,
+	0b00001110,
+	0b00000000
+]
+
+cap_ue = [
+	0b00001010,
+	0b00000000,
+	0b00010001,
+	0b00010001,
+	0b00010001,
+	0b00010001,
+	0b00001110,
+	0b00000000
+]
+
 class LCD(object):
 	def __init__(self, address = 0x27, default_sleep_time = 0.00004, backlight = True, locale = None):
 		# backlight mode
@@ -66,23 +97,15 @@ class LCD(object):
 		if backlight:
 			self.backlight_bit = BL_ON
 		
-		if locale is None:
-			self.locale = LocaleClass.LocaleClass()
-		else:
-			self.locale = locale
-
 		self.bus = i2c_lib.i2c_device(address)
 		self.default_sleep_time = default_sleep_time
 		
 		# init LCD with 4 bit
 		self.init_4_bit()
-		
-		# define custom chars
-		self.def_custom_chars()
-		
+				
 		# init LCD mode
-		self.init_display_mode()
-		
+#		self.init_display_mode()
+	
 	def init_4_bit(self):
 		sleep(0.015) # wait 150 ms
 		self.write_cmd(0b00000011)
@@ -92,7 +115,7 @@ class LCD(object):
 		self.write_cmd(0b00000011)
 		# set to 4 bit mode now
 		self.write_cmd(0b00000010)
-	
+
 	def init_display_mode(self):
 		# 2 lines, 5x8 dots
 		self.write_cmd(LCD_FUNCTIONSET | LCD_2LINE | LCD_5x8DOTS | LCD_4BITMODE)
@@ -105,39 +128,10 @@ class LCD(object):
 		# turn display on
 		self.write_cmd(LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSOROFF)
 	
-	def def_custom_chars(self):
-		# raise error if too many custom characters are defined
-		if (len(self.locale.custom_chars) > 8):
-			raise ValueError("Too many custom characters (only 8 allowed)!")
-		
-		# define a dict to store the custom chars
-		self.custom_chars = {}
-		# define the index of the custom chars
-		custom_char_index = 0
-		
-		# set "cursor" at the start of the CGRAM
-		pos = LCD_SETCGRAMADDR | 0b0000000 # this is the start of the CGRAM
-		self.write_cmd(pos)
-		
-		# write custom characters to CGRAM
-		for c in self.locale.custom_chars.keys():
-			char_shape = self.locale.custom_chars[c]
-			
-			if len(char_shape) != 8:
-				raise ValueError("One of the custom chars is not defined correctly. Each custom char must consist of 8 bytes (representing 8 lines).")
-			
-			# store shape in CGRAM
-			for b in char_shape:
-				self.write_byte(b, rs = RS_ON)
-			
-			# store defined char to custom_chars dict
-			self.custom_chars[c] = custom_char_index
-			custom_char_index += 1
-	
 	def clear_display(self):
 		# usually a longer sleep time is required
 		self.write_cmd(LCD_CLEARDISPLAY, sleep_time = 0.0007) # for my display it takes about 7000 ms - please check for your display
-	
+
 	def set_position(self, line, column):
 		# position commands always have the first bit set (1xxxxxxx)
 		pos = int(LCD_SETDDRAMADDR)
@@ -164,14 +158,9 @@ class LCD(object):
 			self.backlight_bit = BL_ON
 		else:
 			self.backlight_bit = BL_OFF
-	
-	def replace_locale_chars(self, char):
-		if char in self.custom_chars:
-			return self.custom_chars[char]
-		elif char in self.locale.locale_chars:
-			return self.locale.locale_chars[char]
-		else:
-			return ord(char)
+
+	def write_cmd(self, cmd, sleep_time = None):
+		self.write_byte(cmd, rs = RS_OFF, sleep_time = sleep_time)
 
 	def write_byte(self, byte, rs, sleep_time = None):
 		if sleep_time is None:
@@ -193,10 +182,27 @@ class LCD(object):
 		# rs (1 bit, low: command, high: character)
 		self.bus.write(nibble | EN_ON | rw | rs | self.backlight_bit) # enable high
 		self.bus.write(nibble | EN_OFF | rw | rs | self.backlight_bit) # enable low
-	
-	def write_cmd(self, cmd, sleep_time = None):
-		self.write_byte(cmd, rs = RS_OFF, sleep_time = sleep_time)
-	
-	def write(self, char):
-		char_number = self.replace_locale_chars(char)
-		self.write_byte(char_number, rs = RS_ON)
+
+
+lcd = LCD()
+
+# set position
+pos = 0x40
+lcd.write_cmd(pos)
+
+for b in cap_ae:
+	print(b)
+	lcd.write_byte(b, rs = RS_ON)
+
+for b in cap_oe:
+	lcd.write_byte(b, rs = RS_ON)
+
+for b in cap_ue:
+	lcd.write_byte(b, rs = RS_ON)
+
+lcd.init_display_mode()
+
+lcd.set_position(1,0)
+
+for i in range(0,16):
+	lcd.write_byte(i, rs = RS_ON)
