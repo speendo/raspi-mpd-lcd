@@ -110,8 +110,6 @@ class LCD(object):
 		if (len(self.locale.custom_chars) > 8):
 			raise ValueError("Too many custom characters (only 8 allowed)!")
 		
-		# define a dict to store the custom chars
-		self.custom_chars = {}
 		# define the index of the custom chars
 		custom_char_index = 0
 		
@@ -131,7 +129,7 @@ class LCD(object):
 				self.write_byte(b, rs = RS_ON)
 			
 			# store defined char to custom_chars dict
-			self.custom_chars[c] = custom_char_index
+			self.locale.locale_chars[c] = custom_char_index
 			custom_char_index += 1
 	
 	def clear_display(self):
@@ -166,9 +164,7 @@ class LCD(object):
 			self.backlight_bit = BL_OFF
 	
 	def replace_locale_chars(self, char):
-		if char in self.custom_chars:
-			return self.custom_chars[char]
-		elif char in self.locale.locale_chars:
+		if char in self.locale.locale_chars:
 			return self.locale.locale_chars[char]
 		else:
 			return ord(char)
