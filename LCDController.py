@@ -79,8 +79,8 @@ class LCD:
 			for line in self.line_container.values():
 				line.lock.acquire()
 
-			self.lcd.clear_display()
 			self.backlight(False)
+			self.lcd.clear_display()
 
 	def resume(self):
 		if self.suspend:
