@@ -192,20 +192,33 @@ class TextLine(LCDLine):
 
 class MPDLine(TextLine):
 	from mpd import MPDClient
+	from mpd import ConnectionError as MPDConnectionError
 
 	def __init__(self, lcd, line_number, key, **kwargs):
 		super().__init__(lcd, line_number)
 
 		self.client = self.MPDClient()
 		self.client.timeout = 10
-		self.client.connect("localhost", 6600)
+		self.client_connect()
 		self.key = key
 
 		self.set_kwargs(**kwargs)
 
+	def client_connect(self):
+		self.client.connect("localhost", 6600)
+	
 	def update_text(self):
-		if self.key in self.client.currentsong():
-			new_text = self.format_text(self.client.currentsong()[self.key], self.align)
+		# reset connection if necessary
+		current_song = None
+		try:
+			current_song = self.client.currentsong()
+		except self.MPDConnectionError:
+			self.client_connect()
+			current_song = self.client.currentsong() 
+		
+		# get the information	
+		if self.key in current_song:
+			new_text = self.format_text(current_song[self.key], self.align)
 		else:
 			new_text = "NO TEXT"
 

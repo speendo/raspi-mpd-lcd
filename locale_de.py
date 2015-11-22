@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-class LocaleDE(object):
+
+from .locale_class import LocaleClass
+
+class LocaleDE(LocaleClass):
 	def __init__(self):
 		self.locale_chars = {
 			'ä': 225,
