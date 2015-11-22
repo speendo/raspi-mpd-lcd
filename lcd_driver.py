@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import i2c_lib
+from . import i2c_lib
 from time import sleep
 
-import locale_class
+from . import locale_class
 
 ### BIT PATTERNS ###
 
@@ -67,7 +67,7 @@ class LCD(object):
 			self.backlight_bit = BL_ON
 		
 		if locale is None:
-			self.locale = LocaleClass.LocaleClass()
+			self.locale = locale_class.LocaleClass()
 		else:
 			self.locale = locale
 

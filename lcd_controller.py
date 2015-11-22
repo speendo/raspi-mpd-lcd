@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __author__ = 'marcel'
 
-import lcd_driver
+from . import lcd_driver
 import threading
 
 
