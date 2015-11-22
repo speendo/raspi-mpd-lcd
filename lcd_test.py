@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-import LCDDriver
+import lcd_driver
 
-import LocaleDE
+import locale_de
 
-locale = LocaleDE.LocaleDE()
+locale = locale_de.LocaleDE()
 
-lcd = LCDDriver.LCD(locale = locale)
+lcd = lcd_driver.LCD(locale = locale)
 
 while True:
 	line = int(input("Line: "))
@@ -13,6 +13,5 @@ while True:
 	lcd.set_position(line, column)
 	
 	text = input("Text: ")
-	for c in text:
-		lcd.write(c)
+	lcd.write(text)
 

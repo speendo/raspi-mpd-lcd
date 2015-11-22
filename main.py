@@ -3,10 +3,10 @@
 
 __author__ = 'marcel'
 
-from LCDController import *
-from LineController import *
+from lcd_controller import *
+from line_controller import *
 
-from LocaleDE import LocaleDE
+from locale_de import LocaleDE
 
 locale_de = LocaleDE()
 
